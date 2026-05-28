@@ -3,8 +3,7 @@
   --rest: 0.35;
   --cell-w: 320px;
   --cell-h: 180px;
-  --fade-ms: 200ms;
-  --spotlight-rest: 0.25;
+  --fade-ms: 220ms;
 }
 
 * { box-sizing: border-box; }
@@ -96,14 +95,6 @@ html, body {
 #viewport:not(.dragging) #wall .cell:hover .year {
   opacity: 1;
   transform: translateY(0);
-}
-
-body.spotlight #wall:hover img {
-  filter: brightness(var(--spotlight-rest));
-}
-
-body.spotlight #viewport:not(.dragging) #wall .cell:hover img {
-  filter: brightness(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
