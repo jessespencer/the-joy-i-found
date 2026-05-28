@@ -4,10 +4,9 @@ const SHUFFLE = true;
 const SPOTLIGHT = false;
 const NEAR_BOTTOM_PX = 800;
 
-const modules = import.meta.glob('/images/*.{jpg,jpeg,png,webp}', {
+const modules = import.meta.glob('../images/*.{jpg,jpeg,png,webp}', {
   eager: true,
   import: 'default',
-  query: '?url',
 });
 const SOURCES = Object.values(modules);
 
