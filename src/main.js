@@ -277,5 +277,7 @@ window.addEventListener('resize', () => {
 });
 
 computeCellDims();
+state.offsetX = -Math.random() * TILE_W * state.strideX;
+state.offsetY = -Math.random() * TILE_H * state.strideY;
 reconcile();
 applyTransform();
