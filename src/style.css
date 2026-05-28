@@ -1,9 +1,7 @@
 :root {
   --bg: #0a0a0a;
   --rest: 0.55;
-  --gap: 8px;
-  --cell-min: 160px;
-  --cell-min-mobile: 110px;
+  --cell: 160px;
   --fade-ms: 200ms;
   --spotlight-rest: 0.25;
 }
@@ -13,19 +11,36 @@
 html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
+  overflow: hidden;
   background: var(--bg);
-  min-height: 100%;
+}
+
+#viewport {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#viewport.dragging {
+  cursor: grabbing;
 }
 
 #wall {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--cell-min), 1fr));
-  gap: var(--gap);
-  padding: var(--gap);
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
 }
 
 #wall .cell {
-  aspect-ratio: 1 / 1;
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
   overflow: hidden;
   background: var(--bg);
 }
@@ -37,9 +52,11 @@ html, body {
   object-fit: cover;
   filter: brightness(var(--rest));
   transition: filter var(--fade-ms) ease;
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 
-#wall img:hover {
+#viewport:not(.dragging) #wall .cell:hover img {
   filter: brightness(1);
 }
 
@@ -47,18 +64,8 @@ body.spotlight #wall:hover img {
   filter: brightness(var(--spotlight-rest));
 }
 
-body.spotlight #wall img:hover {
+body.spotlight #viewport:not(.dragging) #wall .cell:hover img {
   filter: brightness(1);
-}
-
-#sentinel {
-  height: 1px;
-}
-
-@media (max-width: 600px) {
-  #wall {
-    grid-template-columns: repeat(auto-fill, minmax(var(--cell-min-mobile), 1fr));
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
