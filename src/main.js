@@ -1,6 +1,7 @@
-const CELL_SIZE = 160;
+const ASPECT_W = 16;
+const ASPECT_H = 9;
+const TARGET_VISIBLE = 8;
 const GAP = 8;
-const STRIDE = CELL_SIZE + GAP;
 const BUFFER_CELLS = 2;
 const FRICTION = 0.92;
 const MIN_VELOCITY = 0.05;
@@ -11,7 +12,10 @@ const modules = import.meta.glob('../images/*.{jpg,jpeg,png,webp}', {
   eager: true,
   import: 'default',
 });
-const SOURCES = Object.values(modules);
+const SOURCES = Object.values(modules).map((src) => {
+  const m = /(\d{4})_/.exec(src);
+  return { src, year: m ? m[1] : '' };
+});
 
 const viewport = document.getElementById('viewport');
 const wall = document.getElementById('wall');
@@ -30,16 +34,72 @@ const state = {
   lastX: 0,
   lastY: 0,
   samples: [],
+  cellW: 0,
+  cellH: 0,
+  strideX: 0,
+  strideY: 0,
 };
 
 const cells = new Map();
 let rafId = null;
 let lastFrameTime = 0;
 
+function computeCellDims() {
+  const vw = viewport.clientWidth || window.innerWidth;
+  const vh = viewport.clientHeight || window.innerHeight;
+  const area = (vw * vh) / TARGET_VISIBLE;
+  const cellW = Math.round(Math.sqrt(area * (ASPECT_W / ASPECT_H)));
+  const cellH = Math.round(cellW * (ASPECT_H / ASPECT_W));
+  state.cellW = cellW;
+  state.cellH = cellH;
+  state.strideX = cellW + GAP;
+  state.strideY = cellH + GAP;
+  document.documentElement.style.setProperty('--cell-w', cellW + 'px');
+  document.documentElement.style.setProperty('--cell-h', cellH + 'px');
+}
+
+function mulberry32(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pickTileDims(n, ratio) {
+  if (n <= 1) return [1, 1];
+  const target = Math.sqrt(n * ratio);
+  const lo = Math.max(1, Math.floor(target / 1.5));
+  const hi = Math.ceil(target * 1.5);
+  for (let w = lo; w <= hi; w++) {
+    if (n % w === 0) return [w, n / w];
+  }
+  const w = Math.max(1, Math.round(target));
+  return [w, Math.ceil(n / w)];
+}
+
+const [TILE_W, TILE_H] = pickTileDims(SOURCES.length, ASPECT_W / ASPECT_H);
+
+const TILE = (() => {
+  const size = TILE_W * TILE_H;
+  const arr = new Array(size);
+  for (let i = 0; i < size; i++) arr[i] = i % Math.max(1, SOURCES.length);
+  const rng = mulberry32(0xC0FFEE);
+  for (let i = size - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+})();
+
 function pickImage(col, row) {
   if (SOURCES.length === 0) return null;
-  const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
-  return SOURCES[h % SOURCES.length];
+  const x = ((col % TILE_W) + TILE_W) % TILE_W;
+  const y = ((row % TILE_H) + TILE_H) % TILE_H;
+  return SOURCES[TILE[y * TILE_W + x]];
 }
 
 function key(col, row) {
@@ -47,27 +107,38 @@ function key(col, row) {
 }
 
 function mountCell(col, row) {
-  const src = pickImage(col, row);
-  if (!src) return null;
+  const entry = pickImage(col, row);
+  if (!entry) return null;
   const div = document.createElement('div');
   div.className = 'cell';
-  div.style.transform = `translate3d(${col * STRIDE}px, ${row * STRIDE}px, 0)`;
+  div.style.transform = `translate3d(${col * state.strideX}px, ${row * state.strideY}px, 0)`;
   const img = document.createElement('img');
-  img.src = src;
+  img.src = entry.src;
   img.decoding = 'async';
   img.alt = '';
   div.appendChild(img);
+  if (entry.year) {
+    const label = document.createElement('span');
+    label.className = 'year';
+    label.textContent = entry.year;
+    div.appendChild(label);
+  }
   wall.appendChild(div);
   return div;
+}
+
+function clearCells() {
+  for (const el of cells.values()) el.remove();
+  cells.clear();
 }
 
 function reconcile() {
   const w = viewport.clientWidth;
   const h = viewport.clientHeight;
-  const minCol = Math.floor(-state.offsetX / STRIDE) - BUFFER_CELLS;
-  const maxCol = Math.ceil((-state.offsetX + w) / STRIDE) + BUFFER_CELLS;
-  const minRow = Math.floor(-state.offsetY / STRIDE) - BUFFER_CELLS;
-  const maxRow = Math.ceil((-state.offsetY + h) / STRIDE) + BUFFER_CELLS;
+  const minCol = Math.floor(-state.offsetX / state.strideX) - BUFFER_CELLS;
+  const maxCol = Math.ceil((-state.offsetX + w) / state.strideX) + BUFFER_CELLS;
+  const minRow = Math.floor(-state.offsetY / state.strideY) - BUFFER_CELLS;
+  const maxRow = Math.ceil((-state.offsetY + h) / state.strideY) + BUFFER_CELLS;
 
   for (const [k, el] of cells) {
     const [c, r] = k.split(',').map(Number);
@@ -199,7 +270,12 @@ function endDrag(e) {
 viewport.addEventListener('pointerup', endDrag);
 viewport.addEventListener('pointercancel', endDrag);
 
-window.addEventListener('resize', reconcile);
+window.addEventListener('resize', () => {
+  computeCellDims();
+  clearCells();
+  reconcile();
+});
 
+computeCellDims();
 reconcile();
 applyTransform();

@@ -1,7 +1,8 @@
 :root {
   --bg: #0a0a0a;
-  --rest: 0.55;
-  --cell: 160px;
+  --rest: 0.35;
+  --cell-w: 320px;
+  --cell-h: 180px;
   --fade-ms: 200ms;
   --spotlight-rest: 0.25;
 }
@@ -30,6 +31,22 @@ html, body {
   cursor: grabbing;
 }
 
+#title {
+  position: fixed;
+  top: 16px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  font: 500 14px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  z-index: 10;
+}
+
 #wall {
   position: absolute;
   top: 0;
@@ -39,8 +56,8 @@ html, body {
 
 #wall .cell {
   position: absolute;
-  width: var(--cell);
-  height: var(--cell);
+  width: var(--cell-w);
+  height: var(--cell-h);
   overflow: hidden;
   background: var(--bg);
 }
@@ -56,8 +73,29 @@ html, body {
   -webkit-user-drag: none;
 }
 
+#wall .cell .year {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font: 500 12px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 6px 8px;
+  border-radius: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--fade-ms) ease, transform var(--fade-ms) ease;
+}
+
 #viewport:not(.dragging) #wall .cell:hover img {
   filter: brightness(1);
+}
+
+#viewport:not(.dragging) #wall .cell:hover .year {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 body.spotlight #wall:hover img {
@@ -69,5 +107,6 @@ body.spotlight #viewport:not(.dragging) #wall .cell:hover img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #wall img { transition: none; }
+  #wall img,
+  #wall .cell .year { transition: none; }
 }
